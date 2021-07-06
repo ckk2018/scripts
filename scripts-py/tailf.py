@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+"""python实现的Linux `tail -f` 功能，在Windows上可用"""
+
 import os
 import sys
 import time
@@ -7,7 +9,7 @@ import signal
 from typing import List
 
 
-def must_print_lines(lines: List[str]):
+def must_print_lines(lines: List[str]) -> None:
     for line in lines:
         try:
             print(line.decode(), end='')
@@ -15,7 +17,7 @@ def must_print_lines(lines: List[str]):
             print(line)
 
 
-def tailf(filepath: str):
+def tailf(filepath: str) -> None:
     last_stat = None
 
     while True:
@@ -30,13 +32,12 @@ def tailf(filepath: str):
                         if len(tail) > 10:
                             tail = tail[-10:]
                         break
-                    else:
-                        f.seek(-byte_num, 2)
-                        tail = f.readlines()
-                        if len(tail) > 10:
-                            tail = tail[-10:]
-                            break
-                        byte_num *= 2
+                    f.seek(-byte_num, 2)
+                    tail = f.readlines()
+                    if len(tail) > 10:
+                        tail = tail[-10:]
+                        break
+                    byte_num *= 2
             must_print_lines(tail)
             last_stat = stat
         elif stat.st_mtime_ns != last_stat.st_mtime_ns:
@@ -51,7 +52,7 @@ def tailf(filepath: str):
         time.sleep(0.1)
 
 
-def exit_handler(sig_num, frame):
+def exit_handler(sig_num, frame) -> None:
     print("停止读取...")
     sys.exit()
 
