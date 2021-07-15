@@ -28,6 +28,7 @@ def tailf(filepath: str) -> None:
                 byte_num = 1024
                 while True:
                     if stat.st_size <= byte_num:
+                        f.seek(0, 0)
                         tail = f.readlines()
                         if len(tail) > 10:
                             tail = tail[-10:]
