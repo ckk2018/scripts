@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 """简单地自动化部署脚本，执行3个主要步骤
 1. 编译golang程序
 2. 构建、导出docker镜像
@@ -19,10 +18,18 @@ from typing import Sized
 class ImplicitFTPS(ftplib.FTP_TLS):
     _implicit_port = 990
 
-    def __init__(self, host='', user='', passwd='', acct='',
-                       keyfile=None, certfile=None, timeout: float = -999,
-                       source_address=None, encoding='utf-8') -> None:
-        self.context = ssl.create_default_context(purpose=ssl.Purpose.CLIENT_AUTH)
+    def __init__(self,
+                 host='',
+                 user='',
+                 passwd='',
+                 acct='',
+                 keyfile=None,
+                 certfile=None,
+                 timeout: float = -999,
+                 source_address=None,
+                 encoding='utf-8') -> None:
+        self.context = ssl.create_default_context(
+            purpose=ssl.Purpose.CLIENT_AUTH)
         if keyfile and certfile:
             self.context.load_cert_chain(certfile=certfile, keyfile=keyfile)
         self._prot_p = False
@@ -38,7 +45,11 @@ class ImplicitFTPS(ftplib.FTP_TLS):
                 self.login(user, passwd, acct)
                 self.prot_p()
 
-    def connect(self, host='', port=0, timeout: float = -999, source_address=None) -> str:
+    def connect(self,
+                host='',
+                port=0,
+                timeout: float = -999,
+                source_address=None) -> str:
         if host:
             self.host = host
         if port:
@@ -46,10 +57,12 @@ class ImplicitFTPS(ftplib.FTP_TLS):
         if timeout != -999:
             self.timeout = timeout
         if self.timeout == 0:
-            raise ValueError('Non-blocking socket (timeout=0) is not supported')
+            raise ValueError(
+                'Non-blocking socket (timeout=0) is not supported')
         if source_address:
             self.source_address = source_address
-        self.sock = socket.create_connection((self.host, self.port), self.timeout, self.source_address)
+        self.sock = socket.create_connection((self.host, self.port),
+                                             self.timeout, self.source_address)
         self.sock = self.context.wrap_socket(self.sock)
         self.af = self.sock.family
         self.file = self.sock.makefile('r', encoding=self.encoding)
@@ -57,13 +70,15 @@ class ImplicitFTPS(ftplib.FTP_TLS):
         return self.welcome
 
 
-def do(protocol: str) -> None:
-    if protocol == 'mqtt':
+def do(program: str) -> None:
+    if program == 'mqtt':
         os.chdir('../code/mqtt_prot_server/src/mqtt_prot_server')
-    # elif protocol == 'tcp':
-    #   os.chdir('../code/third_prot_server/src/third_prot_server')
+    elif program == 'tcp':
+        os.chdir('../code/third_prot_server/src/third_prot_server')
+    elif program == 'rtu':
+        os.chdir('../code/third_rtulog_service/src/third_rtulog_service')
     else:
-        print(f'unsupported protocol: {protocol}')
+        print(f'unsupported program: {program}')
 
     os.putenv('GOOS', 'linux')
     os.putenv('GOARCH', 'amd64')
@@ -72,9 +87,9 @@ def do(protocol: str) -> None:
     tar_name = f'{bin_name}.tar'
 
     print('start building ...')
-    
+
     try:
-        subprocess.check_call(f'go build -ldflags "-s -w" {bin_name}')
+        subprocess.check_call(f'go build -ldflags "-s -w" -o {bin_name}')
         subprocess.check_call(f'docker build -t {img_name} .')
         subprocess.check_call(f'docker save {img_name} -o {tar_name}')
         subprocess.check_call('docker image prune -f')
@@ -95,7 +110,7 @@ def do(protocol: str) -> None:
 
 
 class ProgressIndicator:
-    def __init__(self, file_size = 0) -> None:
+    def __init__(self, file_size=0) -> None:
         self.file_size = file_size
         self.sent_size = 0
 
@@ -117,7 +132,10 @@ def send_ftps(filename: str) -> None:
                             timeout=3)
         ftps.cwd('/eys/huaweityun')
         with open(filename, 'rb') as f:
-            ftps.storbinary(f'STOR {filename}', f, callback=ProgressIndicator(file_size=os.path.getsize(filename)))
+            ftps.storbinary(f'STOR {filename}',
+                            f,
+                            callback=ProgressIndicator(
+                                file_size=os.path.getsize(filename)))
     except Exception as e:
         print(f'upload error: {e}')
     else:
@@ -130,4 +148,4 @@ if __name__ == '__main__':
     if len(sys.argv) >= 2:
         do(sys.argv[1])
     else:
-        print('specify a protocol [mqtt]')
+        print('specify a program [mqtt tcp rtu]')

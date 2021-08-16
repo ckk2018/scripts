@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-
 """python实现的Linux `tail -f` 功能，在Windows上可用"""
 
 import os
