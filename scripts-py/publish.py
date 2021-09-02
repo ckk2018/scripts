@@ -10,63 +10,24 @@ import os
 import sys
 import subprocess
 import ftplib
-import ssl
 import socket
 from typing import Sized
 
 
 class ImplicitFTPS(ftplib.FTP_TLS):
-    _implicit_port = 990
-
-    def __init__(self,
-                 host='',
-                 user='',
-                 passwd='',
-                 acct='',
-                 keyfile=None,
-                 certfile=None,
-                 timeout: float = -999,
-                 source_address=None,
-                 encoding='utf-8') -> None:
-        self.context = ssl.create_default_context(
-            purpose=ssl.Purpose.CLIENT_AUTH)
-        if keyfile and certfile:
-            self.context.load_cert_chain(certfile=certfile, keyfile=keyfile)
-        self._prot_p = False
-
-        self.host = host
-        self.port = self._implicit_port
-        self.timeout = timeout
-        self.source_address = source_address
-        self.encoding = encoding
-        if host:
-            self.connect()
-            if user:
-                self.login(user, passwd, acct)
-                self.prot_p()
-
-    def connect(self,
-                host='',
-                port=0,
-                timeout: float = -999,
-                source_address=None) -> str:
+    def connect(self, host: str, port: int = 990) -> str:
         if host:
             self.host = host
-        if port:
+        if port > 0:
             self.port = port
-        if timeout != -999:
-            self.timeout = timeout
-        if self.timeout == 0:
-            raise ValueError(
-                'Non-blocking socket (timeout=0) is not supported')
-        if source_address:
-            self.source_address = source_address
+
         self.sock = socket.create_connection((self.host, self.port),
                                              self.timeout, self.source_address)
         self.sock = self.context.wrap_socket(self.sock)
         self.af = self.sock.family
-        self.file = self.sock.makefile('r', encoding=self.encoding)
+        self.file = self.sock.makefile('r', encoding='utf-8')
         self.welcome = self.getresp()
+
         return self.welcome
 
 
@@ -125,17 +86,16 @@ class ProgressIndicator:
 def send_ftps(filename: str) -> None:
     print('start uploading over ftps ...')
 
+    cb = ProgressIndicator(os.path.getsize(filename))
     try:
         ftps = ImplicitFTPS(user='dingdx@teld.local',
                             passwd='Deri!20170713',
                             host='ftp.teld.cn',
                             timeout=3)
+        ftps.prot_p()
         ftps.cwd('/eys/huaweityun')
         with open(filename, 'rb') as f:
-            ftps.storbinary(f'STOR {filename}',
-                            f,
-                            callback=ProgressIndicator(
-                                file_size=os.path.getsize(filename)))
+            ftps.storbinary(f'STOR {filename}', f, callback=cb)
     except Exception as e:
         print(f'upload error: {e}')
     else:
